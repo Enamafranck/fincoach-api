@@ -1,131 +1,60 @@
-# FinCoach API - Architecture Modulaire
+# FinCoach API
 
-## 📁 Structure du Projet
+Backend d'une application de coaching financier pour le Cameroun et l'Afrique centrale : objectifs d'épargne, cotisations, retraits, paiements mobiles et coach financier basé sur l'IA.
 
+Application associée : [fincoach-app](https://github.com/Enamafranck/fincoach-app)
+
+## Stack
+- **Python** et **FastAPI** (serveur Uvicorn), modèles de données avec Pydantic
+- **Supabase** : base PostgreSQL et authentification
+- **CinetPay** : paiements mobiles
+- **IA** : Groq, Gemini ou Anthropic (détection automatique selon la clé fournie)
+
+## Routes principales
+| Domaine | Routes |
+|---|---|
+| Coach IA | `POST /api/coach/chat` |
+| Cotisations | `POST /api/cotisations/traiter/{user_id}`, `POST /api/cotisations/verifier-toutes` |
+| Retraits | `POST /api/retraits/effectuer`, `POST /api/objectifs/transferer-solde` |
+| Paiements | `POST /api/paiements/initier`, `POST /api/paiements/webhook`, `GET /api/paiements/statut/{reference}` |
+| Transactions et objectifs | `GET /api/transactions/stats/{utilisateur_id}`, `GET /api/transactions/historique/{utilisateur_id}`, `PATCH /api/objectifs/{objectif_id}/desactiver`, `PATCH /api/objectifs/{objectif_id}/reactiver`, `DELETE /api/objectifs/{objectif_id}` |
+
+## Structure
+```text
+main.py            Point d'entrée FastAPI (CORS, routers)
+config.py          Configuration centralisée (Supabase, IA, variables)
+scheduler.py       Tâches planifiées
+requirements.txt   Dépendances Python
+routers/           Routes par domaine (coach, cotisations, retraits, paiements, transactions)
+test_import.py     Vérification de l'architecture
 ```
-backend/
-├── main.py                 # Point d'entrée FastAPI (CORS, routers)
-├── config.py               # Configuration centralisée (Supabase, IA, variables)
-├── requirements.txt        # Dépendances Python
-├── .env                    # Variables d'environnement
-│
-└── routers/               # Modules de routes organisés par domaine
-    ├── __init__.py
-    ├── coach.py           # /api/coach/chat
-    ├── cotisations.py     # /api/cotisations/*
-    ├── retraits.py        # /api/retraits/* + /api/objectifs/transferer-solde
-    ├── paiements.py       # /api/paiements/* (CinetPay)
-    └── transactions.py    # /api/transactions/* + CRUD objectifs
-```
 
-## 🚀 Démarrage Rapide
-
-### Installation
-
+## Installation
 ```bash
-# Activer l'environnement virtuel
-.\venv\Scripts\activate
-
-# Installer les dépendances
+git clone https://github.com/Enamafranck/fincoach-api.git
+cd fincoach-api
+python -m venv venv
+# Windows : .\venv\Scripts\activate
+# Linux / macOS : source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Lancement du serveur
+Crée un fichier `.env` à la racine avec les clés Supabase, CinetPay et IA. Les noms exacts des variables sont dans `config.py`. Ne publie jamais ce fichier.
 
+## Lancement
 ```bash
-# Démarrage avec Uvicorn
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
+La documentation interactive de l'API est disponible sur `http://localhost:8000/docs`.
 
-### Test de l'architecture
+## Sécurité
+- [x] Configuration par variables d'environnement
+- [ ] Vérification de l'authenticité des appels au webhook de paiement
+- [ ] Limitation du débit des requêtes
+- [ ] Tests automatisés et analyse de sécurité du code (CodeQL)
 
-```bash
-python test_import.py
-```
+## Ajouter un router
+1. Créer `routers/mon_router.py` avec un `APIRouter`.
+2. L'enregistrer dans `main.py` avec `app.include_router(...)`.
 
-## 📋 Routes Disponibles
-
-### 🤖 Coach IA
-- `POST /api/coach/chat` - Dialogue avec le coach financier IA
-
-### 💰 Cotisations
-- `POST /api/cotisations/traiter/{user_id}` - Traiter les cotisations dues
-- `POST /api/cotisations/verifier-toutes` - CRON pour vérifier tous les utilisateurs
-
-### 🏦 Retraits
-- `POST /api/retraits/effectuer` - Retrait depuis un objectif
-- `POST /api/objectifs/transferer-solde` - Transfert objectif → solde principal
-
-### 💳 Paiements (CinetPay)
-- `POST /api/paiements/initier` - Initier un paiement (dépôt/retrait)
-- `POST /api/paiements/webhook` - Webhook CinetPay
-- `GET /api/paiements/statut/{reference}` - Vérifier le statut d'un paiement
-
-### 📊 Transactions & Objectifs
-- `GET /api/transactions/stats/{utilisateur_id}` - Statistiques compteurs
-- `GET /api/transactions/historique/{utilisateur_id}` - Historique global
-- `PATCH /api/objectifs/{objectif_id}/desactiver` - Désactiver un objectif
-- `PATCH /api/objectifs/{objectif_id}/reactiver` - Réactiver un objectif
-- `DELETE /api/objectifs/{objectif_id}` - Supprimer un objectif
-
-## 🔧 Configuration
-
-Les variables d'environnement sont centralisées dans `config.py` :
-
-### Clients initialisés
-- **Supabase** : Base de données et authentification
-- **IA** : Support de Groq, Gemini ou Anthropic (auto-détection)
-- **CinetPay** : Gateway de paiement mobile
-
-### Variables disponibles
-```python
-from config import (
-    supabase,           # Client Supabase
-    ai_client,          # Client IA (Groq/Gemini/Anthropic)
-    ai_provider,        # Provider IA actif
-    SYSTEM_PROMPT,      # Prompt du coach
-    CINETPAY_API_KEY,   # Clé API CinetPay
-    CINETPAY_SITE_ID,   # Site ID CinetPay
-    FRONTEND_URL,       # URL frontend
-    BACKEND_URL         # URL backend
-)
-```
-
-## 📦 Avantages de l'Architecture Modulaire
-
-✅ **Séparation des responsabilités** : Chaque router gère un domaine métier  
-✅ **Maintenance facilitée** : Modifications isolées par module  
-✅ **Lisibilité améliorée** : Fichiers courts et focalisés  
-✅ **Scalabilité** : Ajout facile de nouveaux routers  
-✅ **Testabilité** : Tests unitaires par module  
-
-## 🛠️ Ajouter un Nouveau Router
-
-1. Créer `routers/mon_router.py`
-2. Définir le router :
-   ```python
-   from fastapi import APIRouter
-   from config import supabase
-   
-   router = APIRouter(prefix="/api/mon-module", tags=["Mon Module"])
-   
-   @router.get("/ma-route")
-   def ma_fonction():
-       return {"message": "OK"}
-   ```
-3. Enregistrer dans `main.py` :
-   ```python
-   from routers import mon_router
-   app.include_router(mon_router.router)
-   ```
-
-## 📝 Notes Techniques
-
-- **FastAPI** : Framework web moderne avec validation automatique
-- **Pydantic** : Modèles de données typés
-- **Supabase** : PostgreSQL avec API REST automatique
-- **CORS** : Configuré pour `localhost:5173` (frontend Vite/React)
-
----
-
-**Développé pour FinCoach - Cameroun & Afrique Centrale 🇨🇲**
+Développé pour FinCoach, Cameroun et Afrique centrale.
